@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RideX — Admin Dashboard</title>
+<style>
+  :root {
+    --bg:        #0D1117;
+    --surface:   #161B22;
+    --surface2:  #1C2333;
+    --border:    #30363D;
+    --cyan:      #00D4FF;
+    --cyan-dim:  rgba(0,212,255,0.12);
+    --cyan-glow: rgba(0,212,255,0.25);
+    --text:      #E6EDF3;
+    --muted:     #8B949E;
+    --success:   #3FB950;
+    --warning:   #D29922;
+    --danger:    #F85149;
+    --purple:    #BC8CFF;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; position: fixed; height: 100vh; left: 0; top: 0; z-index: 100;
+  }
+  .logo {
+    padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 34px; height: 34px; background: var(--cyan); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: var(--bg);
+  }
+  .logo-text { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .logo-text span { color: var(--cyan); }
+  .logo-badge { font-size: 9px; color: var(--muted); margin-top: 1px; }
+  .nav { padding: 12px 0; flex: 1; overflow-y: auto; }
+  .nav-section { padding: 6px 16px 4px; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+    cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border-left: 2px solid transparent;
+    margin: 1px 0;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--cyan); background: var(--cyan-dim); border-left-color: var(--cyan); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; border-radius: 20px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
+  .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-text { font-size: 11px; color: var(--muted); }
+
+  /* ── Main ── */
+  .main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .page-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .time-badge { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--bg); cursor: pointer; }
+
+  /* ── Content ── */
+  .content { padding: 24px; flex: 1; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Stat cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; position: relative; overflow: hidden; transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--cyan); }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.cyan::before { background: var(--cyan); }
+  .stat-card.green::before { background: var(--success); }
+  .stat-card.warning::before { background: var(--warning); }
+  .stat-card.purple::before { background: var(--purple); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .stat-change { font-size: 12px; color: var(--success); }
+  .stat-icon { position: absolute; right: 16px; top: 16px; font-size: 24px; opacity: .15; }
+
+  /* ── Tables ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-cyan { background: var(--cyan); color: var(--bg); }
+  .btn-cyan:hover { opacity: .85; }
+  .btn-outline { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); }
+  .btn-outline:hover { background: var(--cyan-dim); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  td { padding: 12px 16px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-pending { background: rgba(210,153,34,.15); color: var(--warning); }
+  .badge-active { background: rgba(63,185,80,.15); color: var(--success); }
+  .badge-suspended { background: rgba(248,81,73,.15); color: var(--danger); }
+  .badge-completed { background: rgba(0,212,255,.15); color: var(--cyan); }
+  .badge-progress { background: rgba(188,140,255,.15); color: var(--purple); }
+
+  /* ── Revenue chart ── */
+  .chart-wrap { padding: 20px; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 140px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--cyan-dim); border: 1px solid var(--cyan); transition: all .3s; cursor: pointer; position: relative; }
+  .bar:hover { background: var(--cyan); }
+  .bar-label { font-size: 10px; color: var(--muted); }
+  .bar-val { font-size: 10px; color: var(--cyan); font-weight: 600; }
+
+  /* ── Map placeholder ── */
+  .map-placeholder {
+    height: 240px; background: var(--surface2); border-radius: 8px; margin: 16px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+    border: 1px dashed var(--border); position: relative; overflow: hidden;
+  }
+  .map-dot { width: 10px; height: 10px; border-radius: 50%; position: absolute; animation: float 3s infinite; }
+  .map-dot:nth-child(1) { background: var(--cyan); top: 30%; left: 25%; animation-delay: 0s; }
+  .map-dot:nth-child(2) { background: var(--success); top: 50%; left: 60%; animation-delay: .5s; }
+  .map-dot:nth-child(3) { background: var(--warning); top: 70%; left: 40%; animation-delay: 1s; }
+  .map-dot:nth-child(4) { background: var(--cyan); top: 20%; left: 70%; animation-delay: 1.5s; }
+  .map-dot:nth-child(5) { background: var(--success); top: 60%; left: 20%; animation-delay: 2s; }
+  @keyframes float { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.8);opacity:.6} }
+  .map-text { font-size: 13px; color: var(--muted); z-index: 1; }
+  .map-sub { font-size: 11px; color: var(--muted); opacity: .6; z-index: 1; }
+
+  /* ── Pricing controls ── */
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; padding: 20px; }
+  .pricing-item { background: var(--surface2); border-radius: 10px; padding: 16px; }
+  .pricing-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .pricing-value { font-size: 22px; font-weight: 700; color: var(--cyan); margin-bottom: 10px; }
+  .pricing-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; color: var(--text); font-size: 13px; outline: none; }
+  .pricing-input:focus { border-color: var(--cyan); }
+
+  /* ── Safety ── */
+  .safety-item { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; }
+  .safety-item:last-child { border-bottom: none; }
+  .safety-sev { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .sev-high { background: var(--danger); }
+  .sev-med { background: var(--warning); }
+  .sev-low { background: var(--success); }
+  .safety-content h4 { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .safety-content p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .safety-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* ── Search ── */
+  .search-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 13px; outline: none; width: 220px; }
+  .search-bar:focus { border-color: var(--cyan); }
+  .search-bar::placeholder { color: var(--muted); }
+
+  /* ── Login ── */
+  .login-wrap { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo-icon { width: 52px; height: 52px; background: var(--cyan); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--bg); margin: 0 auto 12px; }
+  .login-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .login-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .login-field { margin-bottom: 16px; }
+  .login-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+  .login-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; }
+  .login-input:focus { border-color: var(--cyan); }
+  .login-btn { width: 100%; background: var(--cyan); color: var(--bg); border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: opacity .15s; }
+  .login-btn:hover { opacity: .85; }
+  .login-error { color: var(--danger); font-size: 12px; margin-top: 8px; text-align: center; display: none; }
+
+  /* ── Grid helpers ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .flex-row { display: flex; gap: 10px; align-items: center; }
+  .spacer { flex: 1; }
+  .text-muted { color: var(--muted); font-size: 12px; }
+  .mt-4 { margin-top: 4px; }
+  .driver-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--cyan-dim); border: 1px solid var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--cyan); flex-shrink: 0; }
+  .driver-info h4 { font-size: 13px; font-weight: 500; color: var(--text); }
+  .driver-info p { font-size: 11px; color: var(--muted); }
+
+  @media(max-width:768px){
+    .sidebar{width:60px}
+    .logo-text,.logo-badge,.nav-section,.nav-item span:not(.icon){display:none}
+    .main{margin-left:60px}
+    .grid2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">R</div>
+      <div class="login-title">RideX Admin</div>
+      <div class="login-sub">Sign in to your dashboard</div>
+    </div>
+    <div class="login-field">
+      <label class="login-label">Username</label>
+      <input class="login-input" type="text" id="loginUser" placeholder="admin" />
+    </div>
+    <div class="login-field">
+      <label class="login-label">Password</label>
+      <input class="login-input" type="password" id="loginPass" placeholder="••••••••" />
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign in to RideX</button>
+    <div class="login-error" id="loginErr">Invalid username or password</div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Default: admin / ridex2026</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-text">Ride<span>X</span></div>
+      <div class="logo-badge">Admin Dashboard</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="showPanel('overview',this)">
+      <span class="icon">📊</span><span>Overview</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('drivers',this)">
+      <span class="icon">🚗</span><span>Drivers</span>
+      <span class="nav-badge">3</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('trips',this)">
+      <span class="icon">📍</span><span>Live Trips</span>
+    </div>
+    <div class="nav-section">Management</div>
+    <div class="nav-item" onclick="showPanel('history',this)">
+      <span class="icon">📋</span><span>Trip History</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('revenue',this)">
+      <span class="icon">💰</span><span>Revenue</span>
+    </div>
+    <div class="nav-item" onclick="showPanel('safety',this)">
+      <span class="icon">🚨</span><span>Safety</span>
+      <span class="nav-badge">2</span>
+    </div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item" onclick="showPanel('pricing',this)">
+      <span class="icon">⚙️</span><span>Pricing</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="status-dot"></span>
+    <span class="status-text">API Online</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="pageTitle">Overview</div>
+      <div class="page-sub" id="pageSub">Welcome back, Admin</div>
+    </div>
+    <div class="topbar-right">
+      <div class="time-badge" id="timeBadge">--:--</div>
+      <div class="avatar">A</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="stats-grid">
+        <div class="stat-card cyan">
+          <div class="stat-label">Total Rides Today</div>
+          <div class="stat-value">0</div>
+          <div class="stat-change">↑ Launch day</div>
+          <div class="stat-icon">🚗</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Revenue Today</div>
+          <div class="stat-value">$0</div>
+          <div class="stat-change">↑ Getting started</div>
+          <div class="stat-icon">💰</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-label">Active Drivers</div>
+          <div class="stat-value">0</div>
+          <div class="stat-change">Approve drivers below</div>
+          <div class="stat-icon">👤</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Pending Approvals</div>
+          <div class="stat-value">3</div>
+          <div class="stat-change">Needs your attention</div>
+          <div class="stat-icon">⏳</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Live Trip Map</div>
+              <div class="card-sub">Active rides right now</div>
+            </div>
+            <button class="btn btn-outline" onclick="showPanel('trips',document.querySelector('.nav-item:nth-child(4)'))">View all</button>
+          </div>
+          <div class="map-placeholder">
+            <div class="map-dot"></div>
+            <div class="map-dot"></div>
+            <div class="map-dot"></div>
+            <div class="map-dot"></div>
+            <div class="map-dot"></div>
+            <div class="map-text">🗺️ No active trips yet</div>
+            <div class="map-sub">Trips will appear here when riders book</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Pending Driver Approvals</div>
+              <div class="card-sub">Review and approve</div>
+            </div>
+          </div>
+          <table>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">JD</div>
+                  <div class="driver-info">
+                    <h4>John Davis</h4>
+                    <p>Toyota Camry · TX-4821</p>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'John Davis')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">SM</div>
+                  <div class="driver-info">
+                    <h4>Sara Miller</h4>
+                    <p>Honda Accord · TX-7734</p>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'Sara Miller')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">AK</div>
+                  <div class="driver-info">
+                    <h4>Ali Khan</h4>
+                    <p>Ford Fusion · TX-2291</p>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'Ali Khan')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRIVERS -->
+    <div class="panel" id="panel-drivers">
+      <div class="flex-row" style="margin-bottom:16px">
+        <input class="search-bar" placeholder="🔍 Search drivers..." />
+        <div class="spacer"></div>
+        <button class="btn btn-cyan">+ Add Driver</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">All Drivers</div>
+            <div class="card-sub">Manage your driver fleet</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>Vehicle</th>
+              <th>Rating</th>
+              <th>Total Rides</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">JD</div>
+                  <div class="driver-info"><h4>John Davis</h4><p>+1 555-0101</p></div>
+                </div>
+              </td>
+              <td>Toyota Camry · TX-4821</td>
+              <td>⭐ —</td>
+              <td>0</td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'John Davis')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">SM</div>
+                  <div class="driver-info"><h4>Sara Miller</h4><p>+1 555-0102</p></div>
+                </div>
+              </td>
+              <td>Honda Accord · TX-7734</td>
+              <td>⭐ —</td>
+              <td>0</td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'Sara Miller')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex-row">
+                  <div class="driver-avatar">AK</div>
+                  <div class="driver-info"><h4>Ali Khan</h4><p>+1 555-0103</p></div>
+                </div>
+              </td>
+              <td>Ford Fusion · TX-2291</td>
+              <td>⭐ —</td>
+              <td>0</td>
+              <td><span class="badge badge-pending">Pending</span></td>
+              <td>
+                <div class="flex-row">
+                  <button class="btn btn-success btn-sm" onclick="approveDriver(this,'Ali Khan')">Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="rejectDriver(this)">Reject</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LIVE TRIPS -->
+    <div class="panel" id="panel-trips">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Live Trip Map</div>
+            <div class="card-sub">All active rides right now</div>
+          </div>
+          <div class="flex-row">
+            <span class="badge badge-active">● Live</span>
+          </div>
+        </div>
+        <div class="map-placeholder" style="height:320px;margin:16px">
+          <div class="map-dot"></div>
+          <div class="map-dot"></div>
+          <div class="map-dot"></div>
+          <div class="map-dot"></div>
+          <div class="map-dot"></div>
+          <div class="map-text" style="font-size:15px">🗺️ Live Map</div>
+          <div class="map-sub">Google Maps will appear here once API key is added</div>
+          <div class="map-sub">Active driver locations update every 3 seconds</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Trips</div>
+        </div>
+        <div style="padding:40px;text-align:center;color:var(--muted)">
+          <div style="font-size:32px;margin-bottom:8px">🚗</div>
+          <div style="font-size:14px">No active trips right now</div>
+          <div style="font-size:12px;margin-top:4px">Trips will appear here when riders book a ride</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRIP HISTORY -->
+    <div class="panel" id="panel-history">
+      <div class="flex-row" style="margin-bottom:16px">
+        <input class="search-bar" placeholder="🔍 Search trips..." />
+        <div class="spacer"></div>
+        <button class="btn btn-outline">Export CSV</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Trip History</div>
+            <div class="card-sub">All completed and cancelled trips</div>
+          </div>
+        </div>
+        <div style="padding:40px;text-align:center;color:var(--muted)">
+          <div style="font-size:32px;margin-bottom:8px">📋</div>
+          <div style="font-size:14px">No trips yet</div>
+          <div style="font-size:12px;margin-top:4px">Completed trips will appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENUE -->
+    <div class="panel" id="panel-revenue">
+      <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card cyan">
+          <div class="stat-label">Total Revenue</div>
+          <div class="stat-value">$0.00</div>
+          <div class="stat-change">Platform earnings</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Driver Payouts</div>
+          <div class="stat-value">$0.00</div>
+          <div class="stat-change">80% to drivers</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-label">Avg Fare</div>
+          <div class="stat-value">$0.00</div>
+          <div class="stat-change">Per trip</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Total Trips</div>
+          <div class="stat-value">0</div>
+          <div class="stat-change">All time</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Revenue This Week</div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-bars">
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Mon</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Tue</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Wed</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Thu</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Fri</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Sat</div></div>
+            <div class="bar-wrap"><div class="bar-val">$0</div><div class="bar" style="height:4px"></div><div class="bar-label">Sun</div></div>
+          </div>
+          <div style="text-align:center;margin-top:20px;color:var(--muted);font-size:13px">
+            Revenue chart will populate as trips are completed
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAFETY -->
+    <div class="panel" id="panel-safety">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Safety Reports</div>
+            <div class="card-sub">All reports require response within 60 minutes</div>
+          </div>
+          <span class="badge badge-pending">2 Open</span>
+        </div>
+        <div class="safety-item">
+          <div class="safety-sev sev-high"></div>
+          <div class="safety-content">
+            <h4>Reckless driving reported</h4>
+            <p>Trip #4821 · Rider reported driver speeding and running red lights · 12 min ago</p>
+          </div>
+          <div class="safety-actions">
+            <button class="btn btn-danger btn-sm">Suspend Driver</button>
+            <button class="btn btn-outline btn-sm">Review</button>
+          </div>
+        </div>
+        <div class="safety-item">
+          <div class="safety-sev sev-med"></div>
+          <div class="safety-content">
+            <h4>Wrong route taken</h4>
+            <p>Trip #4819 · Rider reported driver took longer route intentionally · 45 min ago</p>
+          </div>
+          <div class="safety-actions">
+            <button class="btn btn-outline btn-sm">Review</button>
+            <button class="btn btn-success btn-sm">Resolve</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="panel" id="panel-pricing">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Fare Settings</div>
+            <div class="card-sub">Changes apply immediately across both apps</div>
+          </div>
+          <button class="btn btn-cyan" onclick="savePricing()">Save Changes</button>
+        </div>
+        <div class="pricing-grid">
+          <div class="pricing-item">
+            <div class="pricing-label">Base Fare (Economy)</div>
+            <div class="pricing-value" id="pv1">$2.50</div>
+            <input class="pricing-input" type="number" value="2.50" step="0.25" oninput="updatePv('pv1',this.value,'$')" />
+          </div>
+          <div class="pricing-item">
+            <div class="pricing-label">Per KM Rate</div>
+            <div class="pricing-value" id="pv2">$1.20</div>
+            <input class="pricing-input" type="number" value="1.20" step="0.10" oninput="updatePv('pv2',this.value,'$')" />
+          </div>
+          <div class="pricing-item">
+            <div class="pricing-label">Per Minute Rate</div>
+            <div class="pricing-value" id="pv3">$0.18</div>
+            <input class="pricing-input" type="number" value="0.18" step="0.01" oninput="updatePv('pv3',this.value,'$')" />
+          </div>
+          <div class="pricing-item">
+            <div class="pricing-label">Platform Commission</div>
+            <div class="pricing-value" id="pv4">20%</div>
+            <input class="pricing-input" type="number" value="20" step="1" oninput="updatePv('pv4',this.value,'%')" />
+          </div>
+          <div class="pricing-item">
+            <div class="pricing-label">Surge Multiplier</div>
+            <div class="pricing-value" id="pv5">1.0×</div>
+            <input class="pricing-input" type="number" value="1.0" step="0.1" min="1" max="5" oninput="updatePv('pv5',this.value,'×')" />
+          </div>
+          <div class="pricing-item">
+            <div class="pricing-label">Minimum Fare</div>
+            <div class="pricing-value" id="pv6">$5.00</div>
+            <input class="pricing-input" type="number" value="5.00" step="0.50" oninput="updatePv('pv6',this.value,'$')" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Login
+function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  if (u === 'admin' && p === 'ridex2026') {
+    document.getElementById('loginWrap').style.display = 'none';
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// Navigation
+const titles = {
+  overview: ['Overview','Welcome back, Admin'],
+  drivers:  ['Drivers','Manage your driver fleet'],
+  trips:    ['Live Trips','Real-time trip tracking'],
+  history:  ['Trip History','All completed trips'],
+  revenue:  ['Revenue','Earnings and payouts'],
+  safety:   ['Safety Reports','Review and respond within 60 min'],
+  pricing:  ['Pricing Controls','Fare and commission settings'],
+};
+function showPanel(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  const t = titles[id] || [id, ''];
+  document.getElementById('pageTitle').textContent = t[0];
+  document.getElementById('pageSub').textContent = t[1];
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('timeBadge').textContent = now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// Driver actions
+function approveDriver(btn, name) {
+  const row = btn.closest('tr');
+  row.querySelector('.badge').className = 'badge badge-active';
+  row.querySelector('.badge').textContent = 'Approved';
+  btn.closest('.flex-row').innerHTML = '<span style="color:var(--success);font-size:12px">✓ Approved</span>';
+  showToast(`✅ ${name} approved — they can now go online`);
+}
+function rejectDriver(btn) {
+  const row = btn.closest('tr');
+  row.querySelector('.badge').className = 'badge badge-suspended';
+  row.querySelector('.badge').textContent = 'Rejected';
+  btn.closest('.flex-row').innerHTML = '<span style="color:var(--danger);font-size:12px">✗ Rejected</span>';
+  showToast('❌ Driver rejected');
+}
+
+// Pricing
+function updatePv(id, val, prefix) {
+  const el = document.getElementById(id);
+  if (prefix === '$') el.textContent = '$' + parseFloat(val).toFixed(2);
+  else if (prefix === '%') el.textContent = val + '%';
+  else el.textContent = val + '×';
+}
+function savePricing() { showToast('✅ Pricing saved — changes are live'); }
+
+// Toast
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position:'fixed', bottom:'24px', right:'24px', background:'var(--surface2)',
+    border:'1px solid var(--cyan)', color:'var(--text)', padding:'12px 20px',
+    borderRadius:'10px', fontSize:'13px', zIndex:'9999',
+    boxShadow:'0 4px 20px rgba(0,212,255,0.2)', transition:'all .3s'
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+</body>
+</html>
